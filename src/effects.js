@@ -24,6 +24,44 @@ class AOPass extends GTAOPass {
   }
 }
 
+// NaN / Inf guard. One bad half-float pixel is enough to turn a whole block of the screen
+// black once the bloom blurs and downsamples it, and some GPUs produce such pixels at grazing
+// angles. Bit tests are used instead of isnan(), which fast-math compilers may optimise away.
+const GUARD_GLSL = /* glsl */ `
+  bool badFloat(float x) { return (floatBitsToUint(x) & 0x7f800000u) == 0x7f800000u; }
+  bool badVec(vec3 v) { return badFloat(v.x) || badFloat(v.y) || badFloat(v.z); }
+  vec3 safeNormalize(vec3 v) { float l = length(v); return l > 1e-6 ? v / l : vec3(0.0, 0.0, 1.0); }
+`;
+
+const GuardShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    ${GUARD_GLSL}
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (badVec(c.rgb) || badFloat(c.a)) c = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = vec4(min(c.rgb, vec3(64.0)), c.a);
+    }`,
+};
+
+// Make three's GTAO robust against rounding: clamp cosines before sqrt/acos, avoid normalising
+// zero vectors, and never output NaN. Falls back to the guard pass if the source ever changes.
+function hardenShader(material, edits, label) {
+  let src = material.fragmentShader;
+  let applied = 0;
+  for (const [from, to] of edits) {
+    if (src.includes(from)) { src = src.split(from).join(to); applied++; }
+  }
+  if (applied < edits.length) console.warn(`[fx] ${label}: ${applied}/${edits.length} safety edits applied`);
+  material.fragmentShader = src.replace('void main() {', `${GUARD_GLSL}\n\t\tvoid main() {`);
+  material.needsUpdate = true;
+}
+
 const FinalShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -93,7 +131,19 @@ export class PostFX {
     this.ao.updateGtaoMaterial({ radius: 0.55, distanceExponent: 1.4, thickness: 1.2, scale: 1.15, samples: 16, distanceFallOff: 1 });
     this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     this.ao.blendIntensity = 1.0;
+    hardenShader(this.ao.gtaoMaterial, [
+      ['normalize(viewDelta)', 'safeNormalize(viewDelta)'],
+      ['vec3 normalInSlice = normalize(', 'vec3 normalInSlice = safeNormalize('],
+      ['vec2 sinHorizons = sqrt(1. - cosHorizons * cosHorizons);',
+        'cosHorizons = clamp(cosHorizons, -1., 1.);\n\t\t\t\tvec2 sinHorizons = sqrt(max(vec2(0.), 1. - cosHorizons * cosHorizons));'],
+      ['ao = pow(ao, scale);', 'ao = pow(ao, scale);\n\t\t\tif (badFloat(ao)) ao = 1.0;'],
+    ], 'GTAO');
+    hardenShader(this.ao.pdMaterial, [
+      ['denoised /= totalWeight;\n\t\t\t}', 'denoised /= totalWeight;\n\t\t\t}\n\t\t\tif (badVec(denoised)) denoised = vec3(1.0);'],
+    ], 'AO denoise');
     this.composer.addPass(this.ao);
+    // scrub NaN / Inf before anything blurs the image
+    this.composer.addPass(new ShaderPass(GuardShader));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.36, 0.55, 0.95);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
@@ -282,7 +332,7 @@ export class Particles {
     this.leafP.forEach((p, i) => {
       p.t += dt;
       if (p.t < 0) {
-        this._m.makeScale(0, 0, 0);
+        this._m.makeTranslation(0, -500, 0);
       } else {
         if (p.rest > 0) {
           p.rest -= dt;
@@ -294,7 +344,7 @@ export class Particles {
           const floor = (p.x > -4 && p.x < 4 && p.z > -1 && p.z < 2.2) ? -0.29 : 0.01;
           if (p.y < floor) { p.y = floor; p.rest = 6 + this.rnd() * 6; }
         }
-        const s = p.rest > 0 ? clamp(p.rest / 2, 0, 1) : 1;
+        const s = p.rest > 0 ? Math.max(0.02, clamp(p.rest / 2, 0, 1)) : 1;
         this._e.set(p.rest > 0 ? -Math.PI / 2 : p.t * 2.1 + p.ph, p.t * 1.3, p.rest > 0 ? p.ph : Math.sin(p.t * 3) * 0.8);
         this._q.setFromEuler(this._e);
         this._m.compose(this._p.set(p.x, p.y, p.z), this._q, this._s.set(s, s, s));

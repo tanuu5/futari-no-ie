@@ -81,12 +81,12 @@ const skyFrag = /* glsl */ `
   void main() {
     vec3 d = normalize(vDir);
     float h = d.y;
-    vec3 col = h > 0.0 ? mix(uHor, uTop, pow(smoothstep(0.0, 0.85, h), 0.6)) : mix(uHor, uBot, smoothstep(0.0, -0.25, h));
+    vec3 col = h > 0.0 ? mix(uHor, uTop, pow(smoothstep(0.0, 0.85, h), 0.6)) : mix(uHor, uBot, 1.0 - smoothstep(-0.25, 0.0, h));
     float sd = max(dot(d, uSunDir), 0.0);
     col += uSunCol * (pow(sd, 6.0) * 0.18 + pow(sd, 48.0) * 0.35) * uSunVis * (1.0 - 0.6 * smoothstep(0.1, 0.6, h));
     if (uEnv > 0.5) {
       // environment only: warm bounce from the ground and walls
-      col = mix(col, uBounce, smoothstep(0.02, -0.35, h) * 0.85);
+      col = mix(col, uBounce, (1.0 - smoothstep(-0.35, 0.02, h)) * 0.85);
     } else {
       col += uSunCol * pow(sd, 1400.0) * 40.0 * uSunVis;
       float md = max(dot(d, uMoonDir), 0.0);
@@ -96,7 +96,7 @@ const skyFrag = /* glsl */ `
         vec3 cell = floor(g);
         float s = hash(cell);
         vec3 f = fract(g) - 0.5;
-        float star = step(0.9965, s) * smoothstep(0.5, 0.05, length(f));
+        float star = step(0.9965, s) * (1.0 - smoothstep(0.05, 0.5, length(f)));
         float tw = 0.65 + 0.35 * sin(uTime * (1.0 + s * 3.0) + s * 60.0);
         col += vec3(0.9, 0.95, 1.0) * star * tw * uStars * smoothstep(0.02, 0.3, h) * 2.2;
       }

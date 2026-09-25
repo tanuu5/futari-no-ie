@@ -53,11 +53,8 @@ function wrapDraw(S, a, b, fn) {
 export function woodFloor() {
   const S = 1024;
   const [c, g] = canvas(S);
-  const [cb, gb] = canvas(S);
   const rnd = mulberry32(11);
   const rows = 16, rh = S / rows;
-  gb.fillStyle = '#ffffff';
-  gb.fillRect(0, 0, S, S);
   for (let r = 0; r < rows; r++) {
     const y0 = r * rh;
     const off = rnd() * S;
@@ -104,16 +101,12 @@ export function woodFloor() {
       wrapDraw(S, a, a + 2, (xa, xb) => {
         g.fillStyle = 'rgba(60,38,22,0.65)';
         g.fillRect(xa, y0, xb - xa, rh);
-        gb.fillStyle = '#707070';
-        gb.fillRect(xa, y0, xb - xa, rh);
       });
     }
     g.fillStyle = 'rgba(60,38,22,0.55)';
     g.fillRect(0, y0, S, 1.6);
-    gb.fillStyle = '#707070';
-    gb.fillRect(0, y0, S, 2);
   }
-  return { map: toTexture(c, 2.4), bump: toTexture(cb, 2.4, { srgb: false }) };
+  return { map: toTexture(c, 2.4) };
 }
 
 export function plaster() {

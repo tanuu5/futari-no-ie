@@ -45,7 +45,7 @@ export function createMaterials(T) {
   M.plaster = S({ map: T.plaster, roughness: 0.95 });
   M.cladding = S({ map: T.cladding, color: 0x6e5d4f, roughness: 0.9 });
   M.cap = S({ color: 0x34302c, roughness: 1 });
-  M.floorOak = S({ map: T.wood.map, bumpMap: T.wood.bump, bumpScale: 1.5, roughness: 0.58 });
+  M.floorOak = S({ map: T.wood.map, roughness: 0.58 });
   M.floorStone = S({ map: T.stone, roughness: 0.42 });
   M.floorDoma = S({ map: T.doma, roughness: 0.8 });
   M.floorCork = S({ map: T.cork, roughness: 0.88 });

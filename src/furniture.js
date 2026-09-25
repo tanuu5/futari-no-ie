@@ -339,6 +339,9 @@ export function buildFurniture(M, T) {
     const rp = rg.attributes.position;
     for (let i = 0; i < rp.count; i++) if (rp.getY(i) < 0) rp.setY(i, rp.getY(i) * 0.15);
     rg.computeVertexNormals();
+    // pole vertices that no triangle uses keep a zero normal; give them a valid one anyway
+    const rn = rg.attributes.normal;
+    for (let i = 0; i < rn.count; i++) if (Math.hypot(rn.getX(i), rn.getY(i), rn.getZ(i)) < 1e-4) rn.setXYZ(i, 0, 1, 0);
     H.duvetSleep = new THREE.Mesh(rg, M.fabricCream);
     H.duvetSleep.scale.set(0.8, 0.29, 0.76);
     H.duvetSleep.position.set(7.1, 0.52, -5.5);

@@ -197,21 +197,26 @@ export function buildNature(M, T, quality) {
   root.add(lawnMesh);
   // sides with soil strata
   {
+    // getSpacedPoints() repeats the first point at the end; drop it so no segment has zero
+    // length (a zero normal becomes NaN in the shader and the bloom spreads it as a black block).
     const pts = outline.getSpacedPoints(220);
+    const ring = pts.slice(0, -1);
+    const N = ring.length;
     const pos = [], nor = [], uv = [], idx = [];
     let acc = 0;
     const top = GROUND_Y, bot = P.bottom;
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], nx = pts[(i + 1) % pts.length];
-      if (i > 0) acc += a.distanceTo(pts[i - 1]);
-      const dx = nx.x - a.x, dz = -(nx.y - a.y);
-      const len = Math.hypot(dx, dz) || 1;
+    for (let i = 0; i <= N; i++) {
+      const a = ring[i % N];
+      const prev = ring[(i - 1 + N) % N], next = ring[(i + 1) % N];
+      if (i > 0) acc += a.distanceTo(ring[i - 1]);
+      const dx = next.x - prev.x, dz = -(next.y - prev.y);
+      const len = Math.hypot(dx, dz);
       const n = [-dz / len, 0, dx / len];
       pos.push(a.x, top, -a.y, a.x, bot, -a.y);
       nor.push(...n, ...n);
       uv.push(acc, 1, acc, 0);
     }
-    for (let i = 0; i < pts.length - 1; i++) {
+    for (let i = 0; i < N; i++) {
       const k = i * 2;
       idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
     }

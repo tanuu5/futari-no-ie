@@ -393,7 +393,7 @@ async function main() {
     else requestAnimationFrame(run);
   };
   run();
-  window.__futari = { app, frame };
+  window.__futari = { app, frame, fx, lighting };
 }
 
 main().catch((e) => {
