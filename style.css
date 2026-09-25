@@ -191,6 +191,8 @@ button { font: inherit; color: inherit; }
   letter-spacing: 0.06em;
 }
 .tb-sub { margin: 4px 0 0; color: var(--ink-2); font-size: 12px; }
+.tb-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
+.tb-credit { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); white-space: nowrap; }
 .tb-grid {
   margin: 0;
   display: grid;
@@ -689,8 +691,9 @@ button { font: inherit; color: inherit; }
   .titleblock h1 { font-size: 22px; }
   .tb-sub { display: none; }
   .tb-grid { display: none; }
+  .tb-name { min-width: 0; }
   .tb-actions { align-self: center; }
-  .tb-actions .btn { padding: 5px 9px; }
+  .tb-actions .btn { padding: 5px 9px; white-space: nowrap; }
   #btn-about { display: none; }
   .toolbar { top: calc(var(--gutter) + env(safe-area-inset-top, 0px) + 74px); left: var(--gutter); right: auto; overflow-x: auto; max-width: calc(100% - var(--gutter) * 2); }
   .tool { min-width: 0; padding: 4px 9px; }
@@ -713,6 +716,10 @@ button { font: inherit; color: inherit; }
 @media (max-width: 520px) {
   .notes { width: calc(100% - var(--gutter) * 2); left: var(--gutter); }
   .notes .notes-list { max-height: 38vh; }
+}
+
+@media (max-width: 400px) {
+  .tb-top .tb-eyebrow { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
